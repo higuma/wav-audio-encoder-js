@@ -72,6 +72,11 @@ After calling `.finish()`, all internal data is cleared. You must create a new e
 encoder.cancel()
 ```
 
+* Parameters
+    * (none)
+* Returns
+    * (none)
+
 Cancel encoding and clear all internal data.
 
 ## License
