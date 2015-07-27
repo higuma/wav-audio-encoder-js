@@ -38,23 +38,45 @@ $encodingProcess[0].checked = true
 $bufferSize.attr 'disabled', false
 # ($bufferSize[0].valueAsNumber is initaialized later)
 
-# test tone (440Hz sine with 2Hz on/off beep)
+###
+test tone (440Hz sine with 2Hz on/off beep)
+-------------------------------------------
+            ampMod    output
+osc(sine)-----|>--------|>----->(testTone)
+              ^         ^
+              |(gain)   |(gain)
+              |         |
+lfo(square)---+        0.5
+###
 testTone = do ->
   osc = audioContext.createOscillator()
   lfo = audioContext.createOscillator()
   lfo.type = 'square'
   lfo.frequency.value = 2
-  oscMod = audioContext.createGain()
-  osc.connect oscMod
-  lfo.connect oscMod.gain
+  ampMod = audioContext.createGain()
+  osc.connect ampMod
+  lfo.connect ampMod.gain
   output = audioContext.createGain()
   output.gain.value = 0.5
-  oscMod.connect output
+  ampMod.connect output
   osc.start()
   lfo.start()
   output
 
-# source input mixer
+###
+master diagram
+--------------
+              testToneLevel
+(testTone)----------|>---------+
+                               |
+                               v
+                            (mixer)---+--->(input)--->(processor)
+                               ^      |                    |
+              microphoneLevel  |      |                    v
+(microphone)--------|>---------+      +------------->(destination)
+###
+
+# audio source mixer
 testToneLevel = audioContext.createGain()
 testToneLevel.gain.value = 0
 testTone.connect testToneLevel
@@ -65,8 +87,10 @@ testToneLevel.connect mixer
 microphone = undefined          # obtained by user click
 microphoneLevel.connect mixer
 mixer.connect audioContext.destination
+input = audioContext.createGain()
+mixer.connect input
+processor = undefined           # created on recording
 
-# mixer level
 $testToneLevel.on 'input', ->
   level = $testToneLevel[0].valueAsNumber / 100
   testToneLevel.gain.value = level * level
@@ -100,16 +124,14 @@ $encodingProcess.click (event) ->
   encodingProcess = $(event.target).attr 'mode'
   return
 
-# processor node
-# (create here to detect browser-default bufferSize)
-processor = audioContext.createScriptProcessor(null, 2, 2)
-mixer.connect processor
-processor.connect audioContext.destination
-
 # processor buffer size
 BUFFER_SIZE = [256, 512, 1024, 2048, 4096, 8192, 16384]
 
-iDefBufSz = BUFFER_SIZE.indexOf processor.bufferSize
+defaultBufSz = do ->
+  processor = audioContext.createScriptProcessor(undefined, 2, 2)
+  processor.bufferSize
+
+iDefBufSz = BUFFER_SIZE.indexOf defaultBufSz
 $bufferSize[0].valueAsNumber = iDefBufSz    # initialize with browser default
 
 updateBufferSizeText = ->
@@ -135,7 +157,7 @@ saveRecording = (blob) ->
     "<a class='btn btn-default' href='#{url}' download='recording.wav'>" +
     "Save..." +
     "</a> " +
-    "<button class='btn btn-danger' recording='#{url}'>Delete</button>"
+    "<button class='btn btn-danger' recording='#{url}'>Delete</button>" +
     "</p>"
   $recordingList.prepend $(html)
   return
@@ -155,13 +177,9 @@ encoder = undefined     # used on encodingProcess == direct
 
 startRecordingProcess = ->
   bufSz = BUFFER_SIZE[$bufferSize[0].valueAsNumber]
-  if bufSz != processor.bufferSize
-    mixer.disconnect()
-    mixer.connect audioContext.destination
-    processor.disconnect()
-    processor = audioContext.createScriptProcessor bufSz, 2, 2
-    mixer.connect processor
-    processor.connect audioContext.destination
+  processor = audioContext.createScriptProcessor bufSz, 2, 2
+  input.connect processor
+  processor.connect audioContext.destination
   if encodingProcess == 'direct'
     encoder = new WavAudioEncoder audioContext.sampleRate, 2
     processor.onaudioprocess = (event) ->
@@ -181,7 +199,8 @@ startRecordingProcess = ->
   return
 
 stopRecordingProcess = (finish) ->
-  processor.onaudioprocess = null
+  input.disconnect()
+  processor.disconnect()
   if encodingProcess == 'direct'
     if finish
       saveRecording encoder.finish()
