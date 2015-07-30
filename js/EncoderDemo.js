@@ -140,7 +140,8 @@ $bufferSize[0].valueAsNumber = iDefBufSz;   // initialize with browser default
 function updateBufferSizeText() {
   var iBufSz = $bufferSize[0].valueAsNumber,
       text = "" + BUFFER_SIZE[iBufSz];
-  if (iBufSz === iDefBufSz) text += ' (browser default)';
+  if (iBufSz === iDefBufSz)
+    text += ' (browser default)';
   $('#buffer-size-text').html(text);
 }
 
@@ -150,12 +151,11 @@ $bufferSize.on('input', function() { updateBufferSizeText(); });
 
 // save/delete recording
 function saveRecording(blob) {
-  var html, time, url;
   var time = new Date(),
       url = URL.createObjectURL(blob),
       html = "<p recording='" + url + "'>" +
              "<audio controls src='" + url + "'></audio> " +
-             time.toString() +
+             time +
              " <a class='btn btn-default' href='" + url +
                   "' download='recording.wav'>" +
              "Save...</a> " +
@@ -172,13 +172,13 @@ $recordingList.on('click', 'button', function(event) {
 });
 
 // recording process
-var worker = new Worker('js/EncoderWorker.js');
+var worker = new Worker('js/EncoderWorker.js'),
     encoder = undefined;        // used on encodingProcess == direct
 
 worker.onmessage = function(event) { saveRecording(event.data.blob); };
 
 function getBuffers(event) {
-  var buffers = []
+  var buffers = [];
   for (var ch = 0; ch < 2; ++ch)
     buffers[ch] = event.inputBuffer.getChannelData(ch);
   return buffers;
