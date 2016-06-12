@@ -10,7 +10,7 @@ Basic idea is taken from Recorderjs (<https://github.com/mattdiamond/Recorderjs>
 
 ## Demo
 
-<https://boo-higuma.ssl-lolipop.jp/gh-pages/wav-audio-encoder-js/>
+<https://higuma.github.io/wav-audio-encoder-js/>
 
 ## Library files
 
